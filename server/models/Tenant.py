@@ -18,4 +18,6 @@ class Tenant(db.Model):
         lazy="dynamic",
         cascade="all, delete-orphan"
     )
+    api_disbursements = db.relationship("ApiDisbursement", back_populates="tenant", lazy=True)
+
     

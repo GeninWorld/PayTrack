@@ -26,7 +26,7 @@ def logg_wallet(self, tenant_id, amount, transaction_ref, gateway="mpesa", txn_t
                 txn_type=txn_type,
                 transaction_ref=transaction_ref,
                 account_no=account_no,
-                payment_link_id=payment_link_id
+                payment_link_id=payment_link_id,
             )
 
             logger.info(f"Wallet transaction logged successfully: txn_id={txn.transaction_ref}, tenant_id={tenant_id}")

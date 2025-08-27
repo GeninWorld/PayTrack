@@ -31,11 +31,11 @@ def send_webhook(
     currency,
     transaction_ref=None,
     remarks=None,
-    created_at=None
+    created_at=None,
+    event_type="COLLECTION"  # New parameter: COLLECTION or DISBURSEMENT
 ):
     """
-    Celery task to send webhook to tenant on success/failure.
-    Includes cache lookup for tenant config.
+    Celery task to send webhook (collection or disbursement) to tenant.
     """
     try:
         with current_app.app_context():
@@ -46,7 +46,6 @@ def send_webhook(
             if cached:
                 tenant_data = json.loads(cached)
             else:
-                # Fallback to DB
                 result = (
                     db.session.query(Tenant, TenantConfig)
                     .join(TenantConfig)
@@ -60,11 +59,12 @@ def send_webhook(
                 tenant, config = result
                 tenant_data = serialize_tenant(tenant, config)
 
-                # Save to cache for next time
+                # Save to cache
                 cache.set(f"tenant:{tenant_id}", json.dumps(tenant_data), timeout=3600)
 
-        # --- WEBHOOK PREPARATION ---
+        # --- BASE PAYLOAD ---
         webhook_payload = {
+            "event_type": event_type.upper(),   # <---- include type
             "tenant_id": str(tenant_id),
             "request_id": str(request_id),
             "status": status,
@@ -74,26 +74,35 @@ def send_webhook(
             "created_at": created_at.isoformat(),
         }
 
-        # Add conditional fields
-        if status.upper() == "FAILED":
-            webhook_payload["remarks"] = remarks or "Transaction failed"
-        elif status.upper() == "SUCCESS":
-            webhook_payload["transaction_ref"] = transaction_ref
+        # --- CONDITIONAL FIELDS ---
+        if event_type.upper() == "COLLECTION":
+            if status.upper() == "FAILED":
+                webhook_payload["remarks"] = remarks or "Collection failed"
+            elif status.upper() == "SUCCESS":
+                webhook_payload["transaction_ref"] = transaction_ref
+
+        elif event_type.upper() == "DISBURSEMENT":
+            if status.upper() == "FAILED":
+                webhook_payload["remarks"] = remarks or "Disbursement failed"
+            elif status.upper() == "SUCCESS":
+                webhook_payload["transaction_ref"] = transaction_ref
+                # you can also add destination account details if available
+                # webhook_payload["to_account"] = "..." 
 
         callback_url = tenant_data["config"].get("callback_url")
         if not callback_url:
             logger.info(f"No callback_url configured for tenant {tenant_id}")
             return {"message": "No callback URL configured"}, 200
 
-        # --- WEBHOOK SEND ---
+        # --- SEND WEBHOOK ---
         resp = requests.post(callback_url, json=webhook_payload, timeout=10)
         resp.raise_for_status()
 
         logger.info(
-            f"Webhook sent successfully to tenant {tenant_id} at {callback_url}, "
+            f"{event_type} webhook sent successfully to tenant {tenant_id} at {callback_url}"
         )
-        return {"message": "Webhook sent successfully"}, 200
+        return {"message": f"{event_type} webhook sent successfully"}, 200
 
     except Exception as e:
-        logger.exception(f"Failed to send webhook for tenant {tenant_id}: {e}")
+        logger.exception(f"Failed to send {event_type} webhook for tenant {tenant_id}: {e}")
         raise self.retry(exc=e)

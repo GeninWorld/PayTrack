@@ -13,6 +13,7 @@ class Transaction(db.Model):
     gateway = db.Column(db.String(100))
     type = db.Column(db.String(50))
     status = db.Column(db.String(50))
+    charges = db.Column(db.Boolean, default=False)
     
     payment_link_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('payment_links.id'), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False)

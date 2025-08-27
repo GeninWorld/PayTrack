@@ -8,6 +8,7 @@ from workers.send_webhook import send_webhook
 logger = logging.getLogger(__name__)
 from utils.subscribe_manager import push_to_queue
 from datetime import datetime
+from typing import Optional
 
 class MpesaCallbackResource(Resource):
     def post(self, tenant_id, api_collection_id):
@@ -92,7 +93,8 @@ class MpesaCallbackResource(Resource):
                         request_ref = api_collection.request_reference,
                         currency = "KES",
                         created_at = api_collection.updated_at,
-                        transaction_ref = transaction_id
+                        transaction_ref = transaction_id,
+                        event_type = "COLLECTION"
                     )
 
                 logger.info(f"STK Callback successful for collection {api_collection_id}")
@@ -112,7 +114,9 @@ class MpesaCallbackResource(Resource):
                         request_ref = api_collection.request_reference,
                         currency = "KES",
                         created_at = api_collection.updated_at,
-                        remarks = result_desc
+                        remarks = result_desc,
+                        event_type = "COLLECTION"
+                        
                     )
                 logger.info(f"STK Callback failed for collection {api_collection_id}: {result_desc}")
                 return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200  # still 0 so Safaricom stops retrying
@@ -121,3 +125,85 @@ class MpesaCallbackResource(Resource):
             db.session.rollback()
             current_app.logger.exception(f"M-Pesa callback error: {e}")
             return {"ResultCode": 1, "ResultDesc": "Internal server error"}, 500
+
+
+class MpesaDisbursementCallback(Resource):
+    def post(self, tenant_id, api_disbursement_id):
+        """
+        Handle M-Pesa B2C disbursement callback.
+        
+        """
+        data = request.get_json()
+
+        try:
+            result = data.get('Result', {})
+            conversation_id = result.get('ConversationID')
+            originator_conversation_id = result.get('OriginatorConversationID')
+            result_code = result.get('ResultCode')
+            result_desc = result.get('ResultDesc')
+            transaction_id = result.get('TransactionID')
+
+            if not tenant_id or not api_disbursement_id:
+                logger.warning("Tenant ID or ApiDisbursement ID missing in callback")
+                return {"ResultCode": 1, "ResultDesc": "Missing data"}, 400
+
+            from models import ApiDisbursement  # Import here to avoid circular import
+            api_disbursement = ApiDisbursement.query.get(api_disbursement_id)
+            if not api_disbursement:
+                logger.warning(f"ApiDisbursement {api_disbursement_id} not found")
+                return {"ResultCode": 1, "ResultDesc": "Disbursement not found"}, 404
+
+            if result_code == 0:
+                # Successful disbursement
+                api_disbursement.status = "completed"
+                db.session.commit()
+
+                logg_wallet.delay(
+                    tenant_id=tenant_id,
+                    amount=float(api_disbursement.amount),
+                    transaction_ref=transaction_id,
+                    gateway="mpesa",
+                    txn_type="debit"
+                )
+                
+                send_webhook.delay(
+                    tenant_id=tenant_id,
+                    request_id = api_disbursement.id,
+                    status="success",
+                    amount=float(api_disbursement.amount),
+                    request_ref = api_disbursement.request_reference,
+                    currency = "KES",
+                    created_at = api_disbursement.updated_at,
+                    transaction_ref = transaction_id,
+                    event_type = "DISBURSEMENT"
+                )
+
+                logger.info(f"Disbursement Callback successful for disbursement {api_disbursement_id}")
+                return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
+
+            else:
+                # Failed disbursement
+                api_disbursement.status = "failed"
+                db.session.commit()
+
+                send_webhook.delay(
+                    tenant_id=tenant_id,
+                    request_id = api_disbursement.id,
+                    status="failed",
+                    amount=float(api_disbursement.amount),
+                    request_ref = api_disbursement.request_reference,
+                    currency = "KES",
+                    created_at = api_disbursement.updated_at,
+                    remarks = result_desc,
+                    event_type = "DISBURSEMENT"
+                )
+
+                logger.info(f"Disbursement Callback failed for disbursement {api_disbursement_id}: {result_desc}")
+                return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200  # still 0 so Safaricom stops retrying
+            
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception(f"M-Pesa disbursement callback error: {e}")
+            return {"ResultCode": 1, "ResultDesc": "Internal server error"}, 500
+        
+    
