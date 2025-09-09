@@ -1,4 +1,4 @@
-from models import db, Transaction, Ledger, Tenant
+from models import db, Transaction, Ledger, Tenant, Platform_wallet
 import uuid
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
@@ -48,9 +48,24 @@ class WalletService:
             # Compute new balance
             if status == "success":
                 if txn_type == "credit":
-                    new_balance += amount
-                    tenant.wallet_balance += amount
+                    # fetch or create the platform wallet
+                    platform_wallet = db.session.query(Platform_wallet).first()
+                    if not platform_wallet:
+                        platform_wallet = Platform_wallet(amount=0)
+                        db.session.add(platform_wallet)
+                        db.session.flush()  # make sure it has an ID
 
+                   # calculate fee and net amount
+                    platform_fee = (decimal("2.5") / decimal("100")) * amount
+                    net_amount = amount - platform_fee
+
+                    # update balances
+                    platform_wallet.amount += platform_fee
+                    tenant.wallet_balance += net_amount
+                    new_balance += net_amount   
+
+
+                    db.session.commit()
                 elif txn_type == "debit":
                     # Deduct amount
                     if previous_balance < amount:
