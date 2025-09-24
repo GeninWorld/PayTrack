@@ -7,6 +7,7 @@ import requests
 import base64
 import re
 from datetime import datetime
+from sqlalchemy.orm import joinedload
 from flask import current_app
 import os
 
@@ -34,12 +35,17 @@ def initiate_payment(self, api_collection_id):
     logger.info(f"Initiating payment for request {api_collection_id}")
 
     with current_app.app_context():
-        api_collection = ApiCollection.query.get(api_collection_id)
+        api_collection = (
+            ApiCollection.query
+            .options(joinedload(ApiCollection.tenant))
+            .get(api_collection_id)
+        )       
         if not api_collection:
             logger.error(f"ApiCollection with ID {api_collection_id} not found.")
             return
 
         phone_number = api_collection.mpesa_number
+        tenant_name = api_collection.tenant.name if api_collection.tenant else "Unknown"
         amount = api_collection.amount
         tenant_id = api_collection.tenant_id
         call_back_url = f"https://bgrtfdl5-5000.uks1.devtunnels.ms/payment/mpesa/call_back/{tenant_id}/{api_collection_id}"
@@ -81,7 +87,7 @@ def initiate_payment(self, api_collection_id):
             "PartyB": MPESA_SHORTCODE,
             "PhoneNumber": formatted_number,
             "CallBackURL": call_back_url,
-            "AccountReference": "MealTopUp",
+            "AccountReference": tenant_name,
             "TransactionDesc": "Wallet Funding"
         }
 

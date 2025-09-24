@@ -142,7 +142,7 @@ def create_app():
     api.add_resource(DisbursmentStatus, '/api/disburse/<string:collection_identifier>/status')
     api.add_resource(MpesaDisbursementCallback, '/payment/mpesa/disburse_call_back/<string:tenant_id>/<string:api_disbursement_id>/result')
     
-    # payment links
+    # payment links 
     api.add_resource(PaymentLinkResource, '/payment/links', '/payment/links/<string:tenant_id>')
     api.add_resource(PaymentLinkDetailResource, '/payment/links/transactions/<string:link_token>')
     api.add_resource(LinkPayment, '/payment/links/<string:link_token>/pay')
