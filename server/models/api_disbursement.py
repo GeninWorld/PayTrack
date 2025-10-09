@@ -9,7 +9,8 @@ class ApiDisbursement(db.Model):
     tenant_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('tenants.id'), nullable=False)
     request_reference = db.Column(db.String(255), nullable=False, unique=True)
     mpesa_transaction_id = db.Column(db.String(255), nullable=True)  # returned by Mpesa after payout
-    mpesa_number = db.Column(db.String(20), nullable=False)  # phone number to send money to
+    mpesa_number = db.Column(db.String(20), nullable=True)  # phone number to send money to
+    b2b_account = db.Column(db.JSON, nullable=True)  # Mpesa B2C account details
     amount = db.Column(db.Numeric(12, 2), nullable=False)
     currency = db.Column(db.String(10), nullable=False, default="KES")
     status = db.Column(db.String(50), nullable=False, default="pending")  # pending, processing, completed, failed

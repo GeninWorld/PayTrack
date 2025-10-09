@@ -21,12 +21,12 @@ class DisbursmentRequestResource(Resource):
         amount = data.get("amount")
         currency = data.get("currency", "KES")
         request_ref = data.get("request_ref")
-        mpesa_number = data.get("mpesa_number")
-
+        mpesa_number = data.get("mpesa_number", None)
+        b2b_account = data.get("b2b_account", {})
         # -----------------------
         # Validate required fields
         # -----------------------
-        if not amount or not request_ref or not mpesa_number or not tenant_id:
+        if not amount or not request_ref or not tenant_id:
             return {"error": "Missing required fields"}, 400
 
         try:
@@ -46,7 +46,12 @@ class DisbursmentRequestResource(Resource):
         # -----------------------
         # Check wallet balance (amount + charges)
         # -----------------------
-        charge_val = get_b2c_business_charge(float(amount)) or 0
+
+        if b2b_account:
+            charge_val = get_b2c_business_charge(float(amount)) or 0
+        else:
+            charge_val = get_b2b_business_charge(float(amount)) or 0
+
         total_deduction = amount + Decimal(charge_val)
 
         if tenant.wallet_balance < total_deduction:
@@ -71,7 +76,8 @@ class DisbursmentRequestResource(Resource):
             amount=amount,
             currency=currency,
             request_reference=request_ref,
-            mpesa_number=mpesa_number,
+            mpesa_number=mpesa_number if mpesa_number else None,
+            b2b_account=b2b_account if b2b_account else None,
             status="pending"
         )
 
@@ -126,7 +132,44 @@ def get_b2c_business_charge(amount: float) -> Optional[int]:
 
     return None  # Out of range
     
-            
+
+def get_b2b_business_charge(amount: float) -> Optional[int]:
+    tariff_table = [
+        (1, 49, 2),
+        (50, 100, 3),
+        (101, 500, 8),
+        (501, 1000, 13),
+        (1001, 1500, 18),
+        (1501, 2500, 25),
+        (2501, 3500, 30),
+        (3501, 5000, 39),
+        (5001, 7500, 48),
+        (7501, 10000, 54),
+        (10001, 15000, 63),
+        (15001, 20000, 68),
+        (20001, 25000, 74),
+        (25001, 30000, 79),
+        (30001, 35000, 90),
+        (35001, 40000, 106),
+        (40001, 45000, 110),
+        (45001, 50000, 115),
+        (50001, 70000, 115),
+        (70001, 150000, 115),
+        (150001, 250000, 115),
+        (250001, 500000, 115),
+        (500001, 1000000, 115),
+        (1000001, 3000000, 115),
+        (3000001, 5000000, 115),
+        (5000001, 20000000, 115),
+        (20000001, 50000000, 115),
+    ]
+
+    for min_amt, max_amt, business_charge in tariff_table:
+        if min_amt <= amount <= max_amt:
+            return business_charge
+
+    return None  # Out of range
+
 
 # Simple in-memory rate-limit dict (demo only)
 _last_poll_times = {}

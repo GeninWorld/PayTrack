@@ -10,10 +10,14 @@ class Transaction(db.Model):
     tenant_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('tenants.id'))
     amount = db.Column(db.Numeric(12, 2))
     account_no = db.Column(db.String(50), nullable=True)
+
+    recieving_mpesa_number = db.Column(db.String(20), nullable=True)
+    recieving_b2b_account = db.Column(db.JSON, nullable=True)
     gateway = db.Column(db.String(100))
     type = db.Column(db.String(50))
     status = db.Column(db.String(50))
     charges = db.Column(db.Boolean, default=False)
+
     
     payment_link_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('payment_links.id'), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False)

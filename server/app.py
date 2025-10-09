@@ -23,7 +23,7 @@ from resources.tenants import TenantResource
 from resources.api_keys import ApiKeyResource, ApiKeyDetailResource
 from resources.tenant_wallet import TenantWalletResource
 from resources.payment_request import PaymentRequestResource
-from resources.mpesa_callback import MpesaCallbackResource, MpesaDisbursementCallback
+from resources.mpesa_callback import MpesaCallbackResource, MpesaDisbursementCallback, MpesaDisbursementCallbackB2B
 from resources.payment_request import PaymentStatusResource
 from resources.payment_link_detail import PaymentLinkDetailResource
 from resources.payment_link import PaymentLinkResource
@@ -141,7 +141,7 @@ def create_app():
     api.add_resource(DisbursmentRequestResource, '/api/disburse_request')
     api.add_resource(DisbursmentStatus, '/api/disburse/<string:collection_identifier>/status')
     api.add_resource(MpesaDisbursementCallback, '/payment/mpesa/disburse_call_back/<string:tenant_id>/<string:api_disbursement_id>/result')
-    
+    api.add_resource(MpesaDisbursementCallbackB2B, '/payment/mpesa/disburse_call_back_b2b/<string:tenant_id>/<string:api_disbursement_id>/result')
     # payment links 
     api.add_resource(PaymentLinkResource, '/payment/links', '/payment/links/<string:tenant_id>')
     api.add_resource(PaymentLinkDetailResource, '/payment/links/transactions/<string:link_token>')
