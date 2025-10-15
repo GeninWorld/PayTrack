@@ -146,6 +146,11 @@ class TenantResource(Resource):
         db.session.commit()
 
         tenant_config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
+
+        if not tenant_config:
+            tenant_config = TenantConfig(tenant_id=tenant.id)
+            db.session.add(tenant_config)
+            
         if "account_no" in data:
             tenant_config.account_no = data["account_no"]
         if "callback_url" in data:

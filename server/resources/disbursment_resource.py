@@ -48,9 +48,9 @@ class DisbursmentRequestResource(Resource):
         # -----------------------
 
         if b2b_account:
-            charge_val = get_b2c_business_charge(float(amount)) or 0
-        else:
             charge_val = get_b2b_business_charge(float(amount)) or 0
+        else:
+            charge_val = get_b2c_business_charge(float(amount)) or 0
 
         total_deduction = amount + Decimal(charge_val)
 
