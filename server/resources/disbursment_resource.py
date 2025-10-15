@@ -2,6 +2,7 @@ from flask_restful import Resource, request
 from flask_jwt_extended import jwt_required
 from models import Tenant, ApiDisbursement, db
 from decimal import Decimal, InvalidOperation
+from decorators.api_keys import api_key_required
 from workers.initiate_mpesa import initiate_disbursement
 from flask import current_app
 import logging
@@ -14,10 +15,9 @@ logger = logging.getLogger(__name__)
 
 class DisbursmentRequestResource(Resource):
 
-    @jwt_required()
-    def post(self):
+    @api_key_required()
+    def post(self, tenant_id=None):
         data = request.get_json() or {}
-        tenant_id = data.get("tenant_id")
         amount = data.get("amount")
         currency = data.get("currency", "KES")
         request_ref = data.get("request_ref")
@@ -26,7 +26,7 @@ class DisbursmentRequestResource(Resource):
         # -----------------------
         # Validate required fields
         # -----------------------
-        if not amount or not request_ref or not tenant_id:
+        if not amount or not request_ref:
             return {"error": "Missing required fields"}, 400
 
         try:

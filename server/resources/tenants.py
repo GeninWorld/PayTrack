@@ -150,9 +150,17 @@ class TenantResource(Resource):
         if not tenant_config:
             tenant_config = TenantConfig(tenant_id=tenant.id)
             db.session.add(tenant_config)
+            base_link_id = slugify_username(tenant.name)
+            link_id = base_link_id
+            counter = 1
+            while TenantConfig.query.filter_by(link_id=link_id).first():
+                link_id = f"{base_link_id}_{counter}"
+                counter += 1
+            tenant_config.link_id = link_id
+            account_no = str(random.randint(100000, 999999))
+            tenant_config.account_no = account_no
+            db.session.add(tenant_config)
             
-        if "account_no" in data:
-            tenant_config.account_no = data["account_no"]
         if "callback_url" in data:
             tenant_config.api_callback_url = data["callback_url"]
         db.session.commit()
