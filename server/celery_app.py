@@ -24,8 +24,8 @@ celery.conf.update(
 celery.conf.beat_schedule = {
     'schedule-tenant-payments-every-friday': {
         'task': 'workers.schedule_billing',
-        # 'schedule': crontab(hour=9, minute=0, day_of_week='fri'),
-        'schedule': crontab(minute='*/3'), 
+        'schedule': crontab(hour=9, minute=0, day_of_week='fri'),
+        # 'schedule': crontab(minute='*/3'), 
     },
 }
 
