@@ -56,7 +56,7 @@ class WalletService:
                         db.session.flush()  # make sure it has an ID
 
                    # calculate fee and net amount
-                    platform_fee = (decimal("2.5") / decimal("100")) * amount
+                    platform_fee = (decimal("0.5") / decimal("100")) * amount
                     net_amount = amount - platform_fee
 
                     # update balances
