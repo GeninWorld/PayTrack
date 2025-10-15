@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class DisbursmentRequestResource(Resource):
 
-    @api_key_required()
+    @api_key_required
     def post(self, tenant_id=None):
         data = request.get_json() or {}
         amount = data.get("amount")
