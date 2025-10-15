@@ -17,11 +17,11 @@ from models import db
 from flask_restful import Resource
 
 # Import your resources
-from resources.auth import GoogleAuth
+from resources.auth import GoogleAuth, TenantLogin, TenantSignup
 from resources.user_info import UserInfo
-from resources.tenants import TenantResource
-from resources.api_keys import ApiKeyResource, ApiKeyDetailResource
-from resources.tenant_wallet import TenantWalletResource
+from resources.tenants import TenantResource, TenantConfigManage
+from resources.api_keys import ApiKeyResource, ApiKeyDetailResource, ApiKeyResourceTenant, ApiKeyDetailResourceTenant
+from resources.tenant_wallet import TenantWalletResource, TenantDashboardWalletResource
 from resources.payment_request import PaymentRequestResource
 from resources.mpesa_callback import MpesaCallbackResource, MpesaDisbursementCallback, MpesaDisbursementCallbackB2B
 from resources.payment_request import PaymentStatusResource
@@ -30,6 +30,7 @@ from resources.payment_link import PaymentLinkResource
 from resources.link_payment import LinkPayment
 from resources.payment_subscriber import PaymentSubscribe
 from resources.disbursment_resource import DisbursmentRequestResource, DisbursmentStatus
+
 
 
 # test resources
@@ -147,6 +148,22 @@ def create_app():
     api.add_resource(PaymentLinkDetailResource, '/payment/links/transactions/<string:link_token>')
     api.add_resource(LinkPayment, '/payment/links/<string:link_token>/pay')
     api.add_resource(PaymentSubscribe, "/subscribe/<string:request_id>")
+
+
+    # auth tenant login and signup
+    api.add_resource(TenantLogin, '/auth/dashboard/tenant/login')
+    api.add_resource(TenantSignup, '/auth/dashboard/tenant/signup')
+
+    # tenant config management
+    api.add_resource(TenantConfigManage, '/tenants/dashboard/configs')
+
+    # dashboard wallet summary
+    api.add_resource(TenantDashboardWalletResource, '/tenants/dashboard/wallet')
+
+    # api keys for tenant
+    api.add_resource(ApiKeyResourceTenant, '/tenants/dashboard/key') #add and get all keys for a tenant
+    api.add_resource(ApiKeyDetailResourceTenant, '/tenants/dashboard/key/manage') #put and delete the keys
+
 
     return app
 

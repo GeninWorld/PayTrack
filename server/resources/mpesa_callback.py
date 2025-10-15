@@ -165,20 +165,22 @@ class MpesaDisbursementCallback(Resource):
                     gateway="mpesa",
                     txn_type="debit"
                 )
+                if api_disbursement.payout is not True:
+                    # If not a payout, it means it's a refund to collection
+                    send_webhook.delay(
+                        tenant_id=tenant_id,
+                        request_id = api_disbursement.id,
+                        status="success",
+                        amount=float(api_disbursement.amount),
+                        request_ref = api_disbursement.request_reference,
+                        currency = "KES",
+                        created_at = api_disbursement.updated_at,
+                        transaction_ref = transaction_id,
+                        event_type = "DISBURSEMENT"
+                    )
+                    logger.info(f"Disbursement Callback successful for collection refund {api_disbursement_id}")
+                    return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
                 
-                send_webhook.delay(
-                    tenant_id=tenant_id,
-                    request_id = api_disbursement.id,
-                    status="success",
-                    amount=float(api_disbursement.amount),
-                    request_ref = api_disbursement.request_reference,
-                    currency = "KES",
-                    created_at = api_disbursement.updated_at,
-                    transaction_ref = transaction_id,
-                    event_type = "DISBURSEMENT"
-                )
-
-                logger.info(f"Disbursement Callback successful for disbursement {api_disbursement_id}")
                 return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
 
             else:
@@ -186,19 +188,21 @@ class MpesaDisbursementCallback(Resource):
                 api_disbursement.status = "failed"
                 db.session.commit()
 
-                send_webhook.delay(
-                    tenant_id=tenant_id,
-                    request_id = api_disbursement.id,
-                    status="failed",
-                    amount=float(api_disbursement.amount),
-                    request_ref = api_disbursement.request_reference,
-                    currency = "KES",
-                    created_at = api_disbursement.updated_at,
-                    remarks = result_desc,
-                    event_type = "DISBURSEMENT"
-                )
-
-                logger.info(f"Disbursement Callback failed for disbursement {api_disbursement_id}: {result_desc}")
+                if api_disbursement.payout is not True:
+                    # If not a payout, it means it's a refund to collection
+                    send_webhook.delay(
+                        tenant_id=tenant_id,
+                        request_id = api_disbursement.id,
+                        status="failed",
+                        amount=float(api_disbursement.amount),
+                        request_ref = api_disbursement.request_reference,
+                        currency = "KES",
+                        created_at = api_disbursement.updated_at,
+                        remarks = result_desc,
+                        event_type = "DISBURSEMENT"
+                    )
+                    logger.info(f"Disbursement Callback failed for collection refund {api_disbursement_id}: {result_desc}")
+                    return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
                 return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200  # still 0 so Safaricom stops retrying
             
         except Exception as e:
@@ -244,20 +248,21 @@ class MpesaDisbursementCallbackB2B(Resource):
                     gateway="mpesa",
                     txn_type="debit"
                 )
-                
-                send_webhook.delay(
-                    tenant_id=tenant_id,
-                    request_id = api_disbursement.id,
-                    status="success",
-                    amount=float(api_disbursement.amount),
-                    request_ref = api_disbursement.request_reference,
-                    currency = "KES",
-                    created_at = api_disbursement.updated_at,
-                    transaction_ref = transaction_id,
-                    event_type = "DISBURSEMENT"
-                )
+                if api_disbursement.payout is not True:
+                    send_webhook.delay(
+                        tenant_id=tenant_id,
+                        request_id = api_disbursement.id,
+                        status="success",
+                        amount=float(api_disbursement.amount),
+                        request_ref = api_disbursement.request_reference,
+                        currency = "KES",
+                        created_at = api_disbursement.updated_at,
+                        transaction_ref = transaction_id,
+                        event_type = "DISBURSEMENT"
+                    )
 
-                logger.info(f"Disbursement Callback successful for disbursement {api_disbursement_id}")
+                    logger.info(f"Disbursement Callback successful for disbursement {api_disbursement_id}")
+                    return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
                 return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
 
             else:
@@ -265,21 +270,23 @@ class MpesaDisbursementCallbackB2B(Resource):
                 api_disbursement.status = "failed"
                 db.session.commit()
 
-                send_webhook.delay(
-                    tenant_id=tenant_id,
-                    request_id = api_disbursement.id,
-                    status="failed",
-                    amount=float(api_disbursement.amount),
-                    request_ref = api_disbursement.request_reference,
-                    currency = "KES",
-                    created_at = api_disbursement.updated_at,
-                    remarks = result_desc,
-                    event_type = "DISBURSEMENT"
-                )
+                if api_disbursement.payout is not True:
+                    send_webhook.delay(
+                        tenant_id=tenant_id,
+                        request_id = api_disbursement.id,
+                        status="failed",
+                        amount=float(api_disbursement.amount),
+                        request_ref = api_disbursement.request_reference,
+                        currency = "KES",
+                        created_at = api_disbursement.updated_at,
+                        remarks = result_desc,
+                        event_type = "DISBURSEMENT"
+                    )
 
-                logger.info(f"Disbursement Callback failed for disbursement {api_disbursement_id}: {result_desc}")
+                    logger.info(f"Disbursement Callback failed for disbursement {api_disbursement_id}: {result_desc}")
+                    return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200  # still 0 so Safaricom stops retrying
+
                 return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200  # still 0 so Safaricom stops retrying
-            
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception(f"M-Pesa disbursement callback error: {e}")

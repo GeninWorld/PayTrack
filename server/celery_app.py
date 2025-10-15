@@ -1,5 +1,6 @@
 from celery import Celery
 import os
+from celery.schedules import crontab
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -19,6 +20,14 @@ celery.conf.update(
         'workers.initiate_mpesa',  # <-- import your task module here
     ]
 )
+
+celery.conf.beat_schedule = {
+    'schedule-tenant-payments-every-friday': {
+        'task': 'workers.schedule_billing',
+        # 'schedule': crontab(hour=9, minute=0, day_of_week='fri'),
+        'schedule': crontab(minute='*/3'), 
+    },
+}
 
 def init_celery(app):
     """Initialize Celery with existing Flask app"""

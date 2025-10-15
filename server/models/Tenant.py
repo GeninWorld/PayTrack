@@ -6,6 +6,9 @@ class Tenant(db.Model):
     __tablename__ = 'tenants'
 
     id = db.Column(db.UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = db.Column(db.String(255), unique=True, nullable=True)
+    password = db.Column(db.String(255), nullable=True)
+
     name = db.Column(db.String(255), nullable=False)
     wallet_balance = db.Column(db.Numeric(12, 2), default=0.00)
 

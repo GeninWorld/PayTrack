@@ -1,5 +1,5 @@
 from flask import request, current_app
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_restful import Resource
 from models import db, Tenant, TenantConfig
 import uuid
@@ -26,7 +26,8 @@ def serialize_tenant(tenant, config):
         "config": {
             "account_no": config.account_no,
             "link_id": config.link_id,
-            "callback_url": config.api_callback_url
+            "callback_url": config.api_callback_url,
+            "payment_method": config.payment_method if config.payment_method else None,
         }
     }
 
@@ -160,9 +161,13 @@ class TenantResource(Resource):
             account_no = str(random.randint(100000, 999999))
             tenant_config.account_no = account_no
             db.session.add(tenant_config)
-            
+
         if "callback_url" in data:
             tenant_config.api_callback_url = data["callback_url"]
+
+        if "payment_method" in data:
+            tenant_config.payment_method = data["payment_method"]
+
         db.session.commit()
 
         tenant_data = serialize_tenant(tenant, tenant_config)
@@ -176,6 +181,139 @@ class TenantResource(Resource):
     @jwt_required()
     def delete(self, tenant_id):
         """Delete tenant by ID."""
+        tenant = Tenant.query.get(tenant_id)
+        if not tenant:
+            return {"error": "Tenant not found"}, 404
+
+        TenantConfig.query.filter_by(tenant_id=tenant.id).delete()
+        db.session.delete(tenant)
+        db.session.commit()
+
+        cache = current_app.cache
+        cache.delete(f"tenant:{tenant.id}")
+
+        # Update index
+        index = cache.get("tenants:index")
+        if index:
+            ids = json.loads(index)
+            ids = [tid for tid in ids if tid != str(tenant.id)]
+            cache.set("tenants:index", json.dumps(ids), timeout=3600)
+
+        return {"message": "Tenant deleted"}, 200
+
+
+class TenantConfigManage(Resource):
+    @jwt_required()
+    def get(self):
+        """Get all tenants (cached) OR a single tenant."""
+        cache = current_app.cache
+        tenant_id = get_jwt_identity()
+        if not tenant_id:
+            return {"error": "Unauthorized access"}, 403
+
+        if tenant_id:
+            # Try per-tenant cache
+            cached = cache.get(f"tenant:{tenant_id}")
+            if cached:
+                return json.loads(cached), 200
+
+            # Fallback to DB
+            result = (
+                db.session.query(Tenant, TenantConfig)
+                .join(TenantConfig)
+                .filter(Tenant.id == tenant_id)
+                .first()
+            )
+            if not result:
+                return {"error": "Tenant not found"}, 404
+
+            tenant, config = result
+            tenant_data = serialize_tenant(tenant, config)
+
+            cache.set(f"tenant:{tenant.id}", json.dumps(tenant_data), timeout=3600)
+            return tenant_data, 200
+
+        # Fetch all tenants
+        index = cache.get("tenants:index")
+        tenants = []
+        if index:
+            ids = json.loads(index)
+            # Bulk load cached tenants
+            for tid in ids:
+                cached = cache.get(f"tenant:{tid}")
+                if cached:
+                    tenants.append(json.loads(cached))
+
+        # If cache miss (first load), query DB
+        if not tenants:
+            results = db.session.query(Tenant, TenantConfig).join(TenantConfig).all()
+            ids = []
+            for tenant, config in results:
+                tenant_data = serialize_tenant(tenant, config)
+                ids.append(str(tenant.id))
+                tenants.append(tenant_data)
+                cache.set(f"tenant:{tenant.id}", json.dumps(tenant_data), timeout=3600)
+            cache.set("tenants:index", json.dumps(ids), timeout=3600)
+
+        # Filtering
+        name_filter = request.args.get("name")
+        if name_filter:
+            tenants = [t for t in tenants if name_filter.lower() in t["name"].lower()]
+
+        return tenants, 200
+
+    @jwt_required()
+    def put(self):
+        """Update tenant by ID."""
+        data = request.get_json()
+        tenant_id = get_jwt_identity()
+        if not tenant_id:
+            return {"error": "Unauthorized access"}, 403
+        tenant = Tenant.query.get(tenant_id)
+        if not tenant:
+            return {"error": "Tenant not found"}, 404
+
+        tenant.name = data.get("name", tenant.name)
+        db.session.commit()
+
+        tenant_config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
+
+        if not tenant_config:
+            tenant_config = TenantConfig(tenant_id=tenant.id)
+            db.session.add(tenant_config)
+            base_link_id = slugify_username(tenant.name)
+            link_id = base_link_id
+            counter = 1
+            while TenantConfig.query.filter_by(link_id=link_id).first():
+                link_id = f"{base_link_id}_{counter}"
+                counter += 1
+            tenant_config.link_id = link_id
+            account_no = str(random.randint(100000, 999999))
+            tenant_config.account_no = account_no
+            db.session.add(tenant_config)
+
+        if "callback_url" in data:
+            tenant_config.api_callback_url = data["callback_url"]
+
+        if "payment_method" in data:
+            tenant_config.payment_method = data["payment_method"]
+
+        db.session.commit()
+
+        tenant_data = serialize_tenant(tenant, tenant_config)
+
+        # Update tenant cache only
+        cache = current_app.cache
+        cache.set(f"tenant:{tenant.id}", json.dumps(tenant_data), timeout=3600)
+
+        return tenant_data, 200
+
+    @jwt_required()
+    def delete(self):
+        """Delete tenant by ID."""
+        tenant_id = get_jwt_identity()
+        if not tenant_id:
+            return {"error": "Unauthorized access"}, 403
         tenant = Tenant.query.get(tenant_id)
         if not tenant:
             return {"error": "Tenant not found"}, 404

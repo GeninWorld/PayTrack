@@ -260,3 +260,201 @@ def initiate_disbursement(self, api_disbursement_id):
         db.session.rollback()
         logger.exception(f"Error initiating disbursement for {api_disbursement_id}: {e}")
         self.retry(exc=e, countdown=2 ** self.request.retries)
+
+
+import logging
+from dotenv import load_dotenv
+from datetime import datetime
+from flask import current_app
+from sqlalchemy.orm import joinedload
+from models import Tenant, ApiDisbursement, db
+from celery_app import celery
+from workers.initiate_mpesa import initiate_disbursement
+from decimal import Decimal
+from typing import Optional
+
+load_dotenv()
+logger = logging.getLogger(__name__)
+
+
+@celery.task(bind=True, name="workers.schedule_billing", max_retries=3, default_retry_delay=30)
+def schedule_billing(self):
+    """
+    Weekly billing scheduler — runs every Friday via Celery Beat.
+    Gathers all tenants with valid configs and queues payouts.
+    """
+    logger.info("🔁 Initiating weekly billing schedule")
+    try:
+        with current_app.app_context():
+            tenants = (
+                db.session.query(Tenant)
+                .options(joinedload(Tenant.configs))
+                .filter(
+                    Tenant.configs.any(),
+                    Tenant.wallet_balance > Decimal(10),
+                    Tenant.email.isnot(None)
+                )
+            .all()
+            )
+
+            valid_tenants = []
+            for tenant in tenants:
+                config = tenant.configs[0] if tenant.configs else None
+                if not config or not config.payment_method:
+                    logger.warning(f"⚠️ Skipping tenant {tenant.id} — missing config or payment method")
+                    continue
+
+                valid_tenants.append(tenant.id)
+
+            # Batch process in groups (optional)
+            batch_size = 30
+            for i in range(0, len(valid_tenants), batch_size):
+                batch = valid_tenants[i:i + batch_size]
+                handle_payouts.delay(batch)
+
+            logger.info(f"✅ Scheduled {len(valid_tenants)} tenants for payout processing")
+
+    except Exception as exc:
+        logger.exception(f"❌ Error in schedule_billing: {exc}")
+        raise self.retry(exc=exc)
+
+
+
+@celery.task(bind=True, name="workers.handle_payouts", max_retries=3, default_retry_delay=30)
+def handle_payouts(self, tenant_ids):
+    """
+    Handle payout processing for a batch of tenants.
+    """
+    logger.info(f"💸 Initiating payouts for batch: {tenant_ids}")
+    try:
+        with current_app.app_context():
+            tenants = (
+                db.session.query(Tenant)
+                .options(joinedload(Tenant.configs))
+                .filter(Tenant.id.in_(tenant_ids))
+                .all()
+            )
+
+            for tenant in tenants:
+                amount = tenant.wallet_balance
+                if not amount or amount <= 0:
+                    logger.info(f"Skipping tenant {tenant.id} — not available wallet balance")
+                    continue
+
+                currency = "KES"
+                request_ref = f"PAYOUT-{tenant.id}-{int(datetime.utcnow().timestamp())}"
+                config = tenant.configs[0] if tenant.configs else None
+                if not config or not config.payment_method:
+                    logger.warning(f"⚠️ Skipping tenant {tenant.id} — missing config")
+                    continue
+
+                payment_method = config.payment_method
+                mpesa_number = payment_method.get("mpesa_number")
+                b2b_account = payment_method.get("b2b_account")
+
+                if not mpesa_number and not b2b_account:
+                    logger.warning(f"⚠️ Skipping tenant {tenant.id} — no valid payment method")
+                    continue
+
+                if b2b_account:
+                    charge_val = get_b2b_business_charge(float(amount)) or 0
+                else:
+                    charge_val = get_b2c_business_charge(float(amount)) or 0
+
+                total_deduction = amount - Decimal(charge_val)
+
+
+                disbursement = ApiDisbursement(
+                    tenant_id=tenant.id,
+                    amount=total_deduction,
+                    currency=currency,
+                    request_reference=request_ref,
+                    mpesa_number=mpesa_number,
+                    b2b_account=b2b_account,
+                    payout=True,
+                    status="pending"
+                )
+
+                try:
+                    db.session.add(disbursement)
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.error(f"❌ Failed to create payment request for tenant {tenant.id}: {e}")
+                    continue
+
+                # Trigger async disbursement
+                initiate_disbursement.delay(disbursement.id)
+                logger.info(f"✅ Initiated disbursement for tenant {tenant.id}")
+
+    except Exception as exc:
+        logger.exception(f"❌ Unexpected error in handle_payouts: {exc}")
+        raise self.retry(exc=exc)
+
+def get_b2c_business_charge(amount: float) -> Optional[int]:
+    tariff_table = [
+        (1, 49, 0),
+        (50, 100, 0),
+        (101, 500, 5),
+        (501, 1000, 5),
+        (1001, 1500, 5),
+        (1501, 2500, 9),
+        (2501, 3500, 9),
+        (3501, 5000, 9),
+        (5001, 7500, 11),
+        (7501, 10000, 11),
+        (10001, 15000, 11),
+        (15001, 20000, 11),
+        (20001, 25000, 13),
+        (25001, 30000, 13),
+        (30001, 35000, 13),
+        (35001, 40000, 13),
+        (40001, 45000, 13),
+        (45001, 50000, 13),
+        (50001, 70000, 13),
+        (70001, 250000, 13),
+    ]
+
+    for min_amt, max_amt, business_charge in tariff_table:
+        if min_amt <= amount <= max_amt:
+            return business_charge
+
+    return None  # Out of range
+    
+
+def get_b2b_business_charge(amount: float) -> Optional[int]:
+    tariff_table = [
+        (1, 49, 2),
+        (50, 100, 3),
+        (101, 500, 8),
+        (501, 1000, 13),
+        (1001, 1500, 18),
+        (1501, 2500, 25),
+        (2501, 3500, 30),
+        (3501, 5000, 39),
+        (5001, 7500, 48),
+        (7501, 10000, 54),
+        (10001, 15000, 63),
+        (15001, 20000, 68),
+        (20001, 25000, 74),
+        (25001, 30000, 79),
+        (30001, 35000, 90),
+        (35001, 40000, 106),
+        (40001, 45000, 110),
+        (45001, 50000, 115),
+        (50001, 70000, 115),
+        (70001, 150000, 115),
+        (150001, 250000, 115),
+        (250001, 500000, 115),
+        (500001, 1000000, 115),
+        (1000001, 3000000, 115),
+        (3000001, 5000000, 115),
+        (5000001, 20000000, 115),
+        (20000001, 50000000, 115),
+    ]
+
+    for min_amt, max_amt, business_charge in tariff_table:
+        if min_amt <= amount <= max_amt:
+            return business_charge
+
+    return None  # Out of range

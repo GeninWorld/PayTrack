@@ -12,6 +12,7 @@ class ApiDisbursement(db.Model):
     mpesa_number = db.Column(db.String(20), nullable=True)  # phone number to send money to
     b2b_account = db.Column(db.JSON, nullable=True)  # Mpesa B2C account details
     amount = db.Column(db.Numeric(12, 2), nullable=False)
+    payout = db.Column(db.Boolean, default=False, nullable=True )  # True if money is sent out
     currency = db.Column(db.String(10), nullable=False, default="KES")
     status = db.Column(db.String(50), nullable=False, default="pending")  # pending, processing, completed, failed
     remarks = db.Column(db.String(255), nullable=True)  # reason if failed or extra info

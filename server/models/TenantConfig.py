@@ -8,6 +8,7 @@ class TenantConfig(db.Model):
     tenant_id = db.Column(db.UUID(as_uuid=True), db.ForeignKey('tenants.id'), primary_key=True)
     account_no = db.Column(db.Integer, nullable=False)
     link_id = db.Column(db.String(255), nullable=False)
+    payment_method = db.Column(db.JSON, nullable=True)  # mpesa, card, bank
     api_callback_url = db.Column(db.String(255), nullable=True)
     
     __table_args__ = (

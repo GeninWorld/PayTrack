@@ -89,6 +89,12 @@ def send_webhook(
                 # you can also add destination account details if available
                 # webhook_payload["to_account"] = "..." 
 
+        elif event_type.upper() == "PAYOUT":
+            if status.upper() == "FAILED":
+                webhook_payload["remarks"] = remarks or "Payout failed"
+            elif status.upper() == "SUCCESS":
+                webhook_payload["transaction_ref"] = transaction_ref
+                
         callback_url = tenant_data["config"].get("callback_url")
         if not callback_url:
             logger.info(f"No callback_url configured for tenant {tenant_id}")
