@@ -9,8 +9,9 @@
     padding: 10px 16px;
     display: flex
 ;
-    position: absolute;
+    position: fixed;
     width: calc(100% - 1.1em);
+    z-index: 5;
 }
 .brand { font-weight: 800; letter-spacing: -0.02em; }
 .tablist { display: flex; align-items: center; gap: 8px; }

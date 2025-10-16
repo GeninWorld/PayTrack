@@ -10,6 +10,7 @@ export default function ApiKeysPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   async function fetchKey() {
     setError("");
@@ -54,6 +55,21 @@ export default function ApiKeysPage() {
     finally { setSaving(false); }
   }
 
+  function maskKey(value) {
+    if (!value) return "";
+    if (value.length <= 8) return "*".repeat(value.length);
+    return `${value.slice(0,4)}${"*".repeat(value.length - 8)}${value.slice(-4)}`;
+  }
+
+  async function copyKey() {
+    if (!keyData?.key) return;
+    try {
+      await navigator.clipboard.writeText(keyData.key);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {}
+  }
+
   return (
     <div className={styles.shell}>
       <Tabs
@@ -91,7 +107,12 @@ export default function ApiKeysPage() {
             <div style={{display: "grid", gap: 12, marginTop: 8}}>
               <div>
                 <div className={styles.muted} style={{fontSize: 12}}>Key</div>
-                <div className={styles.mono}>{keyData.key}</div>
+                <div className={styles.mono}>{maskKey(keyData.key)}</div>
+                <div style={{marginTop: 6}}>
+                  <button className="btn btn-primary" onClick={copyKey} disabled={!keyData?.key}>
+                    {copied ? "Copied" : "Copy key"}
+                  </button>
+                </div>
               </div>
               <div style={{display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8}}>
                 <div>

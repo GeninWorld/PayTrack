@@ -183,6 +183,12 @@
   .main {
     padding: 12px;
     gap: 10px;
+    width: 99vw;
+    margin-top: 10vh;
+    padding: 16px;
+    display: grid
+;
+    position: relative;
   }
   .card {
     border-radius: 14px;
@@ -190,4 +196,16 @@
   .walletCard {
     border-radius: 16px;
   }
+  .tbody{
+    display: grid
+;
+    font-size: 7px;
+  }
+  .h2 {
+    letter-spacing: -.02em;
+    font-size: 13px;
+}
+.mono {
+    font-size: 10px;
+}
 }

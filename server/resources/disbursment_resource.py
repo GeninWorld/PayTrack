@@ -177,7 +177,55 @@ _last_poll_times = {}
 
 class DisbursmentStatus(Resource):
 
-    @jwt_required
+    @api_key_required
+    def get(self, collection_identifier):
+        """
+        Returns the status of a payment request.
+        `collection_identifier` can be either the UUID (`id`) or `request_ref`.
+        """
+
+        # -------------------
+        # Rate-limiting (basic example)
+        # -------------------
+        client_ip = request.remote_addr
+        now = datetime.utcnow()
+        last_poll = _last_poll_times.get((client_ip, collection_identifier))
+
+        if last_poll and now - last_poll < timedelta(seconds=10):
+            return {"error": "Polling too frequently. Use callback URL instead."}, 429
+
+        _last_poll_times[(client_ip, collection_identifier)] = now
+
+        # -------------------
+        # Determine if identifier is UUID
+        # -------------------
+        disbursement = None
+        try:
+            uid = uuid.UUID(collection_identifier)
+            disbursement = ApiDisbursement.query.filter_by(id=uid).first()
+        except ValueError:
+            # Not a UUID, treat as request_reference
+            disbursement = ApiDisbursement.query.filter_by(request_reference=collection_identifier).first()
+
+        if not disbursement:
+            return {"error": "Payment request not found"}, 404
+
+        # -------------------
+        # Return limited info
+        # -------------------
+        return {
+            "request_id": str(disbursement.id),
+            "status": disbursement.status,
+            "amount": str(disbursement.amount),
+            "request_ref": disbursement.request_reference,
+            "currency": disbursement.currency,
+            "created_at": disbursement.created_at.isoformat(),
+            "updated_at": disbursement.updated_at.isoformat()
+        }, 200
+    
+class DisbursmentStatus(Resource):
+
+    @api_key_required
     def get(self, collection_identifier):
         """
         Returns the status of a payment request.
