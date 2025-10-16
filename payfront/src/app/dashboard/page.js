@@ -8,6 +8,12 @@ import styles from "./styles.module.css";
 
 const fmtKES = (n) => `KES ${Number(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// export const metadata = {
+//   title: "Dashboard — Paytrack",
+//   description: "Configure callbacks, keys and payout methods. Monitor wallet and tenant details.",
+//   robots: { index: false, follow: false },
+// };
+
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
