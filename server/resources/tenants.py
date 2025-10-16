@@ -28,6 +28,7 @@ def serialize_tenant(tenant, config):
             "link_id": config.link_id,
             "callback_url": config.api_callback_url,
             "payment_method": config.payment_method if config.payment_method else None,
+            "auto_payout": config.auto_payout if hasattr(config, "auto_payout") else False,
         }
     }
 
