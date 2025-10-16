@@ -10,7 +10,7 @@ class TenantConfig(db.Model):
     link_id = db.Column(db.String(255), nullable=False)
     payment_method = db.Column(db.JSON, nullable=True)  # mpesa, card, bank
     api_callback_url = db.Column(db.String(255), nullable=True)
-    
+    auto_payout = db.Column(db.Boolean, default=False)
     __table_args__ = (
         db.Index("idx_tenant_config", "tenant_id"),
     )

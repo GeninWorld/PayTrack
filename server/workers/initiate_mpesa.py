@@ -303,6 +303,9 @@ def schedule_billing(self):
                 if not config or not config.payment_method:
                     logger.warning(f"⚠️ Skipping tenant {tenant.id} — missing config or payment method")
                     continue
+                if not config.auto_payout:
+                    logger.info(f"ℹ️ Skipping tenant {tenant.id} — auto_payout disabled")
+                    continue
 
                 valid_tenants.append(tenant.id)
 

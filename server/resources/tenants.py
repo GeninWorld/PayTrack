@@ -298,6 +298,9 @@ class TenantConfigManage(Resource):
         if "payment_method" in data:
             tenant_config.payment_method = data["payment_method"]
 
+        if "auto_payout" in data:
+            tenant_config.auto_payout = bool(data["auto_payout"])
+
         db.session.commit()
 
         tenant_data = serialize_tenant(tenant, tenant_config)

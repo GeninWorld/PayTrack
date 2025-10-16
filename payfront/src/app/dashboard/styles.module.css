@@ -1,0 +1,193 @@
+.shell {
+    grid-template-rows: auto 1fr;
+    gap: 8px;
+    min-height: 100svh;
+    display: grid
+;
+    justify-content: center;
+}
+
+.main {
+    gap: 12px;
+    padding: 16px;
+    display: grid
+;
+    position: relative;
+    margin-top: 10vh;
+    width: 49vw;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e9ebf4;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.rowBetween {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kicker {
+  color: #657090;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.h2 {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.muted {
+  color: #657090;
+}
+
+.actionsRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* Wallet fancy card */
+.walletCard {
+  position: relative;
+  border-radius: 20px;
+  padding: 20px;
+  color: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(36, 46, 132, 0.25);
+  background: linear-gradient(135deg, #3846f7 0%, #7d87ff 60%, #b0b6ff 100%);
+}
+
+.glow1 {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  top: -60px;
+  right: -40px;
+  filter: blur(2px);
+}
+
+.glow2 {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  bottom: -30px;
+  left: -20px;
+  filter: blur(1px);
+}
+
+.walletHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+.brandMark {
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.95;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chipBoxA {
+  width: 28px;
+  height: 20px;
+  border-radius: 4px;
+  background: #ffd966;
+}
+.chipBoxB {
+  width: 28px;
+  height: 20px;
+  border-radius: 4px;
+  background: #ff8a80;
+  margin-left: -12px;
+  opacity: 0.9;
+}
+
+.walletBody {
+  margin-top: 18px;
+  position: relative;
+  z-index: 1;
+}
+.label {
+  font-size: 14px;
+  opacity: 0.9;
+}
+.holder {
+  font-size: 18px;
+  font-weight: 700;
+}
+.infoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+.subLabel {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 2px;
+}
+.amount {
+  font-size: 22px;
+  font-weight: 800;
+  text-align: right;
+}
+
+/* Table + badges */
+.table { border: 1px solid #e9ebf4; border-radius: 12px; overflow: hidden; margin-top: 12px; }
+.thead { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1.3fr; padding: 10px; background: #f9faff; color: #657090; font-size: 12px; }
+.tbody { display: grid; }
+.trow { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1.3fr; padding: 12px 10px; border-top: 1px solid #f1f3fb; align-items: center; }
+.badgeSuccess { background: #e8faf0; color: #127a3a; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.badgeDanger { background: #fff1f2; color: #b42318; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.amountCredit { color: #127a3a; font-weight: 700; }
+.amountDebit { color: #b42318; font-weight: 700; }
+.pill { background: #eef1ff; color: #19203a; padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+.loadMoreRow { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+/* Summary */
+.summaryGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.summaryCard { background: #ffffff; border: 1px solid #e9ebf4; border-radius: 12px; padding: 12px; }
+.summaryLabel { color: #657090; font-size: 12px; }
+.summaryValue { font-weight: 800; letter-spacing: -0.02em; }
+
+/* Skeleton */
+.skeletonLine {
+  height: 14px;
+  background: #eef1ff;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 12px;
+    gap: 10px;
+  }
+  .card {
+    border-radius: 14px;
+  }
+  .walletCard {
+    border-radius: 16px;
+  }
+}

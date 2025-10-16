@@ -1,0 +1,29 @@
+.tabs {
+    color: #eef0f6;
+    background: #0f1222;
+    border-bottom: 1px solid #1d2140;
+    border-radius: 14px;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0.51em;
+    padding: 10px 16px;
+    display: flex
+;
+    position: absolute;
+    width: calc(100% - 1.1em);
+}
+.brand { font-weight: 800; letter-spacing: -0.02em; }
+.tablist { display: flex; align-items: center; gap: 8px; }
+.tab {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid #2a2f50;
+  background: #171a2b;
+  color: #eef0f6;
+}
+.tabActive {
+  background: var(--primary);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 6px 16px rgba(100, 114, 243, 0.25);
+}
