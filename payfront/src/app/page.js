@@ -220,7 +220,7 @@ export default function Home() {
       <section id="pricing" className={styles.pricing}>
         <div className={styles.priceCard}>
           <div className={styles.priceHeader}>Simple pricing</div>
-          <div className={styles.priceValue}>0.01%</div>
+          <div className={styles.priceValue}>1.5%</div>
           <div className={styles.priceNote}>per successful collection</div>
           <ul className={styles.priceList}>
             <li>

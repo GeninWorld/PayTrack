@@ -83,7 +83,7 @@ export default function WalletPage() {
               <div className={styles.chip}><div className={styles.chipBoxA} /><div className={styles.chipBoxB} /></div>
             </div>
             <div className={styles.walletBody}>
-              <div className={styles.label}>Card holder</div>
+              <div className={styles.label}>Tenant Name</div>
               <div className={styles.holder}>{loading ? "Loading..." : wallet?.name || "—"}</div>
               <div className={styles.infoRow}>
                 <div>
