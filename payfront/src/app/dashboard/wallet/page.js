@@ -125,6 +125,7 @@ export default function WalletPage() {
               <div>Type</div>
               <div>Amount</div>
               <div>Status</div>
+              <div>Customer</div>
               <div>Date</div>
             </div>
             <div className={styles.tbody}>
@@ -135,6 +136,21 @@ export default function WalletPage() {
                   <div><span className={t.type === "credit" ? styles.pill : styles.pill}>{t.type.toUpperCase()}</span></div>
                   <div className={t.type === "credit" ? styles.amountCredit : styles.amountDebit}>{fmtKES(t.amount)}</div>
                   <div><span className={styles.badgeSuccess}>{t.status}</span></div>
+                  {(t.receiving_mpesa_number || t.b2b_account?.account_number || t.b2b_account?.paybill_number)?(
+                    <div>
+                      {t.receiving_mpesa_number ?
+                        <div>
+                          mpesa: {`${t.receiving_mpesa_number.slice(0, 4)}****${t.receiving_mpesa_number.slice(-4)}`}
+                        </div>
+                        :
+                        <div>
+                          b2b: account: {t.b2b_account?.account_number ? `${t.b2b_account.account_number.slice(0,2)}****${t.b2b_account.account_number.slice(-2)}` : ""}
+                          {" "}
+                          paybill: {t.b2b_account?.paybill_number ? `${t.b2b_account.paybill_number.slice(0,2)}****${t.b2b_account.paybill_number.slice(-2)}` : ""}
+                        </div>
+                      }
+                    </div>
+                  ) : <div>Mpesa: {t.account_no ? `${t.account_no.slice(0, 4)}****${t.account_no.slice(-4)}` : ""}</div>}
                   <div>{new Date(t.created_at).toLocaleString()}</div>
                 </div>
               ))}
