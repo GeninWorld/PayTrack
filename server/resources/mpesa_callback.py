@@ -115,7 +115,8 @@ class MpesaCallbackResource(Resource):
                         currency = "KES",
                         created_at = api_collection.updated_at,
                         remarks = result_desc,
-                        event_type = "COLLECTION"
+                        event_type = "COLLECTION",
+                        mpesa_number=api_collection.mpesa_number if api_collection.mpesa_number else None
                         
                     )
                 logger.info(f"STK Callback failed for collection {api_collection_id}: {result_desc}")
