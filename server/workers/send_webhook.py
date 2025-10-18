@@ -32,7 +32,9 @@ def send_webhook(
     transaction_ref=None,
     remarks=None,
     created_at=None,
-    event_type="COLLECTION"  # New parameter: COLLECTION or DISBURSEMENT
+    event_type="COLLECTION" , # New parameter: COLLECTION or DISBURSEMENT,
+    mpesa_account_number=None,
+    b2b_account=None
 ):
     """
     Celery task to send webhook (collection or disbursement) to tenant.
@@ -80,6 +82,8 @@ def send_webhook(
                 webhook_payload["remarks"] = remarks or "Collection failed"
             elif status.upper() == "SUCCESS":
                 webhook_payload["transaction_ref"] = transaction_ref
+                webhook_payload["mpesa_account_number"] = mpesa_account_number
+                webhook_payload["b2b_account"] = b2b_account
 
         elif event_type.upper() == "DISBURSEMENT":
             if status.upper() == "FAILED":
@@ -94,6 +98,8 @@ def send_webhook(
                 webhook_payload["remarks"] = remarks or "Payout failed"
             elif status.upper() == "SUCCESS":
                 webhook_payload["transaction_ref"] = transaction_ref
+                webhook_payload["mpesa_account_number"] = mpesa_account_number
+                webhook_payload["b2b_account"] = b2b_account
                 
         callback_url = tenant_data["config"].get("callback_url")
         if not callback_url:

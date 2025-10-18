@@ -83,7 +83,7 @@ class MpesaCallbackResource(Resource):
                         transaction_ref=transaction_id,
                         gateway="mpesa",
                         account_no=phone_number,
-                        txn_type="credit"
+                        txn_type="credit",
                     )
                     send_webhook.delay(
                         tenant_id=tenant_id,
@@ -163,7 +163,9 @@ class MpesaDisbursementCallback(Resource):
                     amount=float(api_disbursement.amount),
                     transaction_ref=transaction_id,
                     gateway="mpesa",
-                    txn_type="debit"
+                    txn_type="debit",
+                    mpesa_account_number=api_disbursement.mpesa_number if api_disbursement.mpesa_number else None,
+                    b2b_account=api_disbursement.b2b_account if api_disbursement.b2b_account else None
                 )
                 if api_disbursement.payout is not True:
                     # If not a payout, it means it's a refund to collection
@@ -176,7 +178,9 @@ class MpesaDisbursementCallback(Resource):
                         currency = "KES",
                         created_at = api_disbursement.updated_at,
                         transaction_ref = transaction_id,
-                        event_type = "DISBURSEMENT"
+                        event_type = "DISBURSEMENT",
+                        mpesa_account_number=api_disbursement.mpesa_number if api_disbursement.mpesa_number else None,
+                        b2b_account=api_disbursement.b2b_account if api_disbursement.b2b_account else None
                     )
                     logger.info(f"Disbursement Callback successful for collection refund {api_disbursement_id}")
                     return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
@@ -199,7 +203,9 @@ class MpesaDisbursementCallback(Resource):
                         currency = "KES",
                         created_at = api_disbursement.updated_at,
                         remarks = result_desc,
-                        event_type = "DISBURSEMENT"
+                        event_type = "DISBURSEMENT",
+                        mpesa_account_number=api_disbursement.mpesa_number if api_disbursement.mpesa_number else None,
+                        b2b_account=api_disbursement.b2b_account if api_disbursement.b2b_account else None
                     )
                     logger.info(f"Disbursement Callback failed for collection refund {api_disbursement_id}: {result_desc}")
                     return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
@@ -246,7 +252,9 @@ class MpesaDisbursementCallbackB2B(Resource):
                     amount=float(api_disbursement.amount),
                     transaction_ref=transaction_id,
                     gateway="mpesa",
-                    txn_type="debit"
+                    txn_type="debit",
+                    mpesa_account_number=api_disbursement.mpesa_number if api_disbursement.mpesa_number else None,
+                    b2b_account=api_disbursement.b2b_account if api_disbursement.b2b_account else None
                 )
                 if api_disbursement.payout is not True:
                     send_webhook.delay(
@@ -258,7 +266,9 @@ class MpesaDisbursementCallbackB2B(Resource):
                         currency = "KES",
                         created_at = api_disbursement.updated_at,
                         transaction_ref = transaction_id,
-                        event_type = "DISBURSEMENT"
+                        event_type = "DISBURSEMENT",
+                        mpesa_account_number=api_disbursement.mpesa_number if api_disbursement.mpesa_number else None,
+                        b2b_account=api_disbursement.b2b_account if api_disbursement.b2b_account else None
                     )
 
                     logger.info(f"Disbursement Callback successful for disbursement {api_disbursement_id}")

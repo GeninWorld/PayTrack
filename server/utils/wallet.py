@@ -17,6 +17,8 @@ class WalletService:
         transaction_ref=None,
         account_no=None,
         payment_link_id=None,
+        mpesa_account_number=None,
+        b2b_account=None
     ):
         if not transaction_ref:
             transaction_ref = f"txn_{uuid.uuid4().hex[:12]}"
@@ -96,6 +98,8 @@ class WalletService:
                             created_at=datetime.utcnow(),
                             payment_link_id=payment_link_id,
                             charges=True,
+                            recieving_mpesa_number=mpesa_account_number,
+                            recieving_b2b_account=b2b_account
                         )
                         db.session.add(charge_txn)
 
@@ -129,6 +133,8 @@ class WalletService:
                 created_at=datetime.utcnow(),
                 payment_link_id=payment_link_id,
                 charges=False,
+                recieving_mpesa_number=mpesa_account_number,
+                recieving_b2b_account=b2b_account
             )
             db.session.add(txn)
 

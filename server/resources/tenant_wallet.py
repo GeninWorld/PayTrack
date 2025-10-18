@@ -17,6 +17,8 @@ def serialize_transaction(tx):
         "gateway": tx.gateway,
         "type": tx.type,
         "status": tx.status,
+        "receiving_mpesa_number": tx.recieving_mpesa_number,
+        "receiving_b2b_account": tx.recieving_b2b_account,
         "created_at": tx.created_at.isoformat() if tx.created_at else None,
         "updated_at": tx.updated_at.isoformat() if tx.updated_at else None,
     }

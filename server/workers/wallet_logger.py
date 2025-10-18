@@ -8,7 +8,7 @@ from flask import current_app
 logger = logging.getLogger(__name__)
 
 @celery.task(bind=True, name="workers.wallet_logger", max_retries=3, default_retry_delay=30)
-def logg_wallet(self, tenant_id, amount, transaction_ref, gateway="mpesa", txn_type="credit",account_no=None, payment_link_id=None):
+def logg_wallet(self, tenant_id, amount, transaction_ref, gateway="mpesa", txn_type="credit",account_no=None, payment_link_id=None, mpesa_account_number=None, b2b_account=None):
     """
     Celery task to log a wallet transaction using the passed parameters.
     """
@@ -27,6 +27,8 @@ def logg_wallet(self, tenant_id, amount, transaction_ref, gateway="mpesa", txn_t
                 transaction_ref=transaction_ref,
                 account_no=account_no,
                 payment_link_id=payment_link_id,
+                mpesa_account_number=mpesa_account_number,
+                b2b_account=b2b_account
             )
 
             logger.info(f"Wallet transaction logged successfully: txn_id={txn.transaction_ref}, tenant_id={tenant_id}")
