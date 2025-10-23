@@ -90,6 +90,8 @@ def send_webhook(
                 webhook_payload["remarks"] = remarks or "Disbursement failed"
             elif status.upper() == "SUCCESS":
                 webhook_payload["transaction_ref"] = transaction_ref
+                mpesa_account_number = mpesa_account_number if mpesa_account_number else None
+                b2b_account = b2b_account if b2b_account else None
                 webhook_payload["mpesa_account_number"] = mpesa_account_number
                 webhook_payload["b2b_account"] = b2b_account
                 # you can also add destination account details if available

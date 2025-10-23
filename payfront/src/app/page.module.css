@@ -29,6 +29,10 @@
 .navlinks a {
   color: var(--foreground);
 }
+
+a.page-module___8aEwW__signup {
+  color: white;
+}
 .menuBtn {
   display: none;
   background: #eef1ff;
