@@ -189,23 +189,23 @@ export default function Home() {
         <div className={styles.codeHeader}>Charge with STK Push</div>
         <pre>
           {`curl -X POST https://pay.geninworld.com/api/payment_request \\\n+  -H "Authorization: Bearer sk_test_***" \\\n+  -H "Content-Type: application/json" \\\n+  -d '{
-    "amount": "15.00",
-    "currency": "KES",
-    "request_ref": "unique_request_reference",
-    "mpesa_number": "254700000000"
-  }'`}
+            "amount": "15.00",
+            "currency": "KES",
+            "request_ref": "unique_request_reference",
+            "mpesa_number": "254700000000"
+          }'`}
         </pre>
         <div className={styles.codeHeader}>Disburse to B2B/B2C Account</div>
         <pre>
           {`curl -X POST https://pay.geninworld.com/api/disburse_request \\\n+  -H "Authorization: Bearer sk_test_***" \\\n+  -H "Content-Type: application/json" \\\n+  -d '{
-    "amount": "12",
-    // "mpesa_number": "254700000000", optional to b2b account
-    "request_ref": "abcdefesscndjkcd",
-    "b2b_account": {
-        "paybill_number": "1234",
-        "account_number": "456"
-    } // optional to b2c account
-  }'`}
+            "amount": "12",
+            // "mpesa_number": "254700000000", optional to b2b account
+            "request_ref": "abcdefesscndjkcd",
+            "b2b_account": {
+                "paybill_number": "1234",
+                "account_number": "456"
+            } // optional to b2c account
+          }'`}
         </pre>
         <div className={styles.codeHeader}>Query collection status</div>
         <pre>

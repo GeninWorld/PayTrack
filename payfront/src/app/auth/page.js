@@ -44,7 +44,7 @@ export default function LoginPage() {
     <div>
       <div className="card-header">
         <h1 className="card-title">Sign in to Paytrack</h1>
-        <p className="card-subtitle">Manage your rent, payments and invoices</p>
+        <p className="card-subtitle">Manage your finances, payments and invoices</p>
       </div>
       <div className="card-body">
         <form className="stack" onSubmit={onSubmit}>
