@@ -364,7 +364,7 @@ def handle_payouts(self, tenant_ids):
                 else:
                     charge_val = get_b2c_business_charge(float(amount)) or 0
 
-                total_deduction = amount - Decimal(charge_val)
+                total_deduction = amount + Decimal(charge_val)
 
 
                 disbursement = ApiDisbursement(

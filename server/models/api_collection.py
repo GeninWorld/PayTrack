@@ -20,4 +20,3 @@ class ApiCollection(db.Model):
 
     tenant = db.relationship("Tenant", back_populates="api_collections")
     payment_link = db.relationship("PaymentLinks", backref="api_collections", lazy=True)
-
