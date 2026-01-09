@@ -9,7 +9,6 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
-
 class LinkPayment(Resource):
     def post(self, link_token):
         """

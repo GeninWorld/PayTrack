@@ -13,8 +13,7 @@ from typing import Optional
 class MpesaCallbackResource(Resource):
     def post(self, tenant_id, api_collection_id):
         """
-        Handle M-Pesa STK callback.
-        
+        Handle M-Pesa STK callback with idempotency protection.
         """
         data = request.get_json()
 
@@ -29,10 +28,17 @@ class MpesaCallbackResource(Resource):
                 logger.warning("Tenant ID or ApiCollection ID missing in callback")
                 return {"ResultCode": 1, "ResultDesc": "Missing data"}, 400
 
-            api_collection = ApiCollection.query.get(api_collection_id)
+            # ✅ Use row-level locking to prevent race conditions
+            api_collection = ApiCollection.query.with_for_update().get(api_collection_id)
+            
             if not api_collection:
                 logger.warning(f"ApiCollection {api_collection_id} not found")
                 return {"ResultCode": 1, "ResultDesc": "Collection not found"}, 404
+
+            # ✅ IDEMPOTENCY CHECK - If already processed, skip
+            if api_collection.status in ["completed", "failed"]:
+                logger.info(f"Duplicate callback for {api_collection_id} - already {api_collection.status}")
+                return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
 
             if result_code == 0:
                 # Successful payment
@@ -46,13 +52,10 @@ class MpesaCallbackResource(Resource):
 
                 # Update status immediately
                 api_collection.status = "completed"
-                api_collection.mpesa_checkout_request_id = checkout_request_id
-                db.session.commit()
+                api_collection.mpesa_receipt_number = transaction_id  # Store this for reference
+                db.session.commit()  # ✅ Commit BEFORE async tasks
 
-                
-                
                 if api_collection.payment_link_id is not None:
-                    # Delay wallet logging asynchronously
                     logg_wallet.delay(
                         tenant_id=tenant_id,
                         amount=float(amount),
@@ -72,11 +75,9 @@ class MpesaCallbackResource(Resource):
                         "created_at": api_collection.updated_at.isoformat(),
                         "transaction_ref": transaction_id
                     }
-
                     push_to_queue(str(api_collection.id), status_msg)
                     
                 else:
-                    # Delay wallet logging asynchronously
                     logg_wallet.delay(
                         tenant_id=tenant_id,
                         amount=float(amount),
@@ -87,52 +88,50 @@ class MpesaCallbackResource(Resource):
                     )
                     send_webhook.delay(
                         tenant_id=tenant_id,
-                        request_id = api_collection.id,
+                        request_id=api_collection.id,
                         status="success",
                         amount=float(amount),
-                        request_ref = api_collection.request_reference,
-                        currency = "KES",
-                        created_at = api_collection.updated_at,
-                        transaction_ref = transaction_id,
-                        event_type = "COLLECTION"
+                        request_ref=api_collection.request_reference,
+                        currency="KES",
+                        created_at=api_collection.updated_at,
+                        transaction_ref=transaction_id,
+                        event_type="COLLECTION"
                     )
 
                 logger.info(f"STK Callback successful for collection {api_collection_id}")
-                # Safaricom expects a JSON response immediately
                 return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
 
             else:
                 # Failed payment
                 api_collection.status = "failed"
-                db.session.commit()
+                db.session.commit()  # ✅ Commit BEFORE async tasks
+                
                 if api_collection.payment_link_id is None:
                     send_webhook.delay(
                         tenant_id=tenant_id,
-                        request_id = api_collection.id,
+                        request_id=api_collection.id,
                         status="failed",
                         amount=float(api_collection.amount),
-                        request_ref = api_collection.request_reference,
-                        currency = "KES",
-                        created_at = api_collection.updated_at,
-                        remarks = result_desc,
-                        event_type = "COLLECTION",
+                        request_ref=api_collection.request_reference,
+                        currency="KES",
+                        created_at=api_collection.updated_at,
+                        remarks=result_desc,
+                        event_type="COLLECTION",
                         mpesa_number=api_collection.mpesa_number if api_collection.mpesa_number else None
-                        
                     )
+                    
                 logger.info(f"STK Callback failed for collection {api_collection_id}: {result_desc}")
-                return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200  # still 0 so Safaricom stops retrying
+                return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
 
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception(f"M-Pesa callback error: {e}")
             return {"ResultCode": 1, "ResultDesc": "Internal server error"}, 500
 
-
 class MpesaDisbursementCallback(Resource):
     def post(self, tenant_id, api_disbursement_id):
         """
         Handle M-Pesa B2C disbursement callback.
-        
         """
         data = request.get_json()
 
@@ -148,16 +147,25 @@ class MpesaDisbursementCallback(Resource):
                 logger.warning("Tenant ID or ApiDisbursement ID missing in callback")
                 return {"ResultCode": 1, "ResultDesc": "Missing data"}, 400
 
-            from models import ApiDisbursement  # Import here to avoid circular import
-            api_disbursement = ApiDisbursement.query.get(api_disbursement_id)
+            from models import ApiDisbursement
+            
+            # ✅ Use row-level locking
+            api_disbursement = ApiDisbursement.query.with_for_update().get(api_disbursement_id)
+            
             if not api_disbursement:
                 logger.warning(f"ApiDisbursement {api_disbursement_id} not found")
                 return {"ResultCode": 1, "ResultDesc": "Disbursement not found"}, 404
 
+            # ✅ IDEMPOTENCY CHECK
+            if api_disbursement.status in ["completed", "failed"]:
+                logger.info(f"Duplicate callback for disbursement {api_disbursement_id} - already {api_disbursement.status}")
+                return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
+
             if result_code == 0:
                 # Successful disbursement
                 api_disbursement.status = "completed"
-                db.session.commit()
+                api_disbursement.mpesa_transaction_id = transaction_id
+                db.session.commit()  # ✅ Commit BEFORE async tasks
 
                 logg_wallet.delay(
                     tenant_id=tenant_id,
@@ -168,49 +176,47 @@ class MpesaDisbursementCallback(Resource):
                     mpesa_account_number=api_disbursement.mpesa_number if api_disbursement.mpesa_number else None,
                     b2b_account=api_disbursement.b2b_account if api_disbursement.b2b_account else None
                 )
+                
                 if api_disbursement.payout is not True:
-                    # If not a payout, it means it's a refund to collection
                     send_webhook.delay(
                         tenant_id=tenant_id,
-                        request_id = api_disbursement.id,
+                        request_id=api_disbursement.id,
                         status="success",
                         amount=float(api_disbursement.amount),
-                        request_ref = api_disbursement.request_reference,
-                        currency = "KES",
-                        created_at = api_disbursement.updated_at,
-                        transaction_ref = transaction_id,
-                        event_type = "DISBURSEMENT",
+                        request_ref=api_disbursement.request_reference,
+                        currency="KES",
+                        created_at=api_disbursement.updated_at,
+                        transaction_ref=transaction_id,
+                        event_type="DISBURSEMENT",
                         mpesa_account_number=api_disbursement.mpesa_number if api_disbursement.mpesa_number else None,
                         b2b_account=api_disbursement.b2b_account if api_disbursement.b2b_account else None
                     )
                     logger.info(f"Disbursement Callback successful for collection refund {api_disbursement_id}")
-                    return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
-                
+                    
                 return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
 
             else:
                 # Failed disbursement
                 api_disbursement.status = "failed"
-                db.session.commit()
+                db.session.commit()  # ✅ Commit BEFORE async tasks
 
                 if api_disbursement.payout is not True:
-                    # If not a payout, it means it's a refund to collection
                     send_webhook.delay(
                         tenant_id=tenant_id,
-                        request_id = api_disbursement.id,
+                        request_id=api_disbursement.id,
                         status="failed",
                         amount=float(api_disbursement.amount),
-                        request_ref = api_disbursement.request_reference,
-                        currency = "KES",
-                        created_at = api_disbursement.updated_at,
-                        remarks = result_desc,
-                        event_type = "DISBURSEMENT",
+                        request_ref=api_disbursement.request_reference,
+                        currency="KES",
+                        created_at=api_disbursement.updated_at,
+                        remarks=result_desc,
+                        event_type="DISBURSEMENT",
                         mpesa_account_number=api_disbursement.mpesa_number if api_disbursement.mpesa_number else None,
                         b2b_account=api_disbursement.b2b_account if api_disbursement.b2b_account else None
                     )
                     logger.info(f"Disbursement Callback failed for collection refund {api_disbursement_id}: {result_desc}")
-                    return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
-                return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200  # still 0 so Safaricom stops retrying
+                    
+                return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
             
         except Exception as e:
             db.session.rollback()
