@@ -1,15 +1,22 @@
 # workers/initiate_mpesa.py
-
-import logging
-from dotenv import load_dotenv
-from models import ApiCollection, db, ApiDisbursement
+from models import ApiCollection, db, ApiDisbursement, Tenant
 import requests
 import base64
 import re
 from datetime import datetime
-from sqlalchemy.orm import joinedload
 from flask import current_app
 import os
+import logging
+from dotenv import load_dotenv
+from sqlalchemy.orm import joinedload
+from celery_app import celery
+from workers.initiate_mpesa import initiate_disbursement
+from decimal import Decimal
+from typing import Optional
+
+load_dotenv()
+logger = logging.getLogger(__name__)
+
 
 from celery_app import celery
 load_dotenv()
@@ -262,19 +269,6 @@ def initiate_disbursement(self, api_disbursement_id):
         self.retry(exc=e, countdown=2 ** self.request.retries)
 
 
-import logging
-from dotenv import load_dotenv
-from datetime import datetime
-from flask import current_app
-from sqlalchemy.orm import joinedload
-from models import Tenant, ApiDisbursement, db
-from celery_app import celery
-from workers.initiate_mpesa import initiate_disbursement
-from decimal import Decimal
-from typing import Optional
-
-load_dotenv()
-logger = logging.getLogger(__name__)
 
 
 @celery.task(bind=True, name="workers.schedule_billing", max_retries=3, default_retry_delay=30)
@@ -364,7 +358,7 @@ def handle_payouts(self, tenant_ids):
                 else:
                     charge_val = get_b2c_business_charge(float(amount)) or 0
 
-                total_deduction = amount + Decimal(charge_val)
+                total_deduction = amount - Decimal(charge_val)
 
 
                 disbursement = ApiDisbursement(
