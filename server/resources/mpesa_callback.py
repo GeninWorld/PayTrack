@@ -5,10 +5,12 @@ from decimal import Decimal
 import logging
 from workers.wallet_logger import logg_wallet  # Celery task
 from workers.send_webhook import send_webhook
-logger = logging.getLogger(__name__)
 from utils.subscribe_manager import push_to_queue
 from datetime import datetime
 from typing import Optional
+from utils.logger import setup_logger
+
+logger = setup_logger("mpesa_callback")
 
 class MpesaCallbackResource(Resource):
     def post(self, tenant_id, api_collection_id):

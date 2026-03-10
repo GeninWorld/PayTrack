@@ -10,7 +10,7 @@ import logging
 from dotenv import load_dotenv
 from sqlalchemy.orm import joinedload
 from celery_app import celery
-from workers.initiate_mpesa import initiate_disbursement
+# from workers.initiate_mpesa import initiate_disbursement
 from decimal import Decimal
 from typing import Optional
 

@@ -40,6 +40,7 @@ from test_resources.example_callback import TestWebhookResource
 import sqlalchemy.pool
 from celery_app import celery
 from celery_app import init_celery
+from utils.logger import setup_logger
 bcrypt = Bcrypt()
 
 
@@ -51,9 +52,11 @@ def create_app():
         "poolclass": sqlalchemy.pool.NullPool
     }
 
+    logger = setup_logger("api_main")
+    logger.info("Starting PayTrack API...")
     # Extensions
     db.init_app(app)
-    # ✅ All keys in UPPERCASE
+    # All keys in UPPERCASE
     app.config.update(
         CELERY_BROKER_URL= app.config["CELERY_BROKER_URL"],
         CELERY_RESULT_BACKEND=app.config["CELERY_RESULT_BACKEND"],
@@ -143,12 +146,12 @@ def create_app():
     api.add_resource(DisbursmentStatus, '/api/disburse/<string:collection_identifier>/status')
     api.add_resource(MpesaDisbursementCallback, '/payment/mpesa/disburse_call_back/<string:tenant_id>/<string:api_disbursement_id>/result')
     api.add_resource(MpesaDisbursementCallbackB2B, '/payment/mpesa/disburse_call_back_b2b/<string:tenant_id>/<string:api_disbursement_id>/result')
+    
     # payment links 
     api.add_resource(PaymentLinkResource, '/payment/links', '/payment/links/<string:tenant_id>')
     api.add_resource(PaymentLinkDetailResource, '/payment/links/transactions/<string:link_token>')
     api.add_resource(LinkPayment, '/payment/links/<string:link_token>/pay')
     api.add_resource(PaymentSubscribe, "/subscribe/<string:request_id>")
-
 
     # auth tenant login and signup
     api.add_resource(TenantLogin, '/auth/dashboard/tenant/login')
